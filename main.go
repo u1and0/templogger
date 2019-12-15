@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -11,14 +12,19 @@ import (
 
 const filename = "data/11211002.DAT"
 
-// type Row struct {
-// 	Key uint16
-// 	Val uint16
-// }
+var js []string
 
-// func (r Row) String() string {
-// 	return fmt.Sprintf("(%s: %v)", string(r.Key), r.Val)
-// }
+// JSONelement : JSON要素
+type JSONelement struct {
+	Time        time.Time `json:"TIME"`
+	Temperature float64   `json:"TEMPERATURE"`
+	Accx        []float64 `json:"ACCX"`
+	Accy        []float64 `json:"ACCY"`
+	Accz        []float64 `json:"ACCZ"`
+}
+
+// JSONdata : JSON化
+// type JSONdata map[time.Time]JSONelement
 
 func main() {
 	fp, err := os.Open(filename)
@@ -52,36 +58,45 @@ func main() {
 		}
 
 		/* 加速度X */
-		accx, err := TransAccx(enco, "x")
+		accx, err := TransAcc(enco, "x")
 		if err != nil {
 			log.Fatalln(err)
 		}
 
 		/* 加速度Y */
-		accy, err := TransAccx(enco, "y")
+		accy, err := TransAcc(enco, "y")
 		if err != nil {
 			log.Fatalln(err)
 		}
 
 		/* 加速度Z */
-		accz, err := TransAccx(enco, "z")
+		accz, err := TransAcc(enco, "z")
 		if err != nil {
 			log.Fatalln(err)
 		}
 
 		/* 出力 */
+		d := new(JSONelement)
+		d.Time = tm
+		d.Temperature = tmp
+		d.Accx = accx
+		d.Accy = accy
+		d.Accz = accz
 		// fmt.Printf("%s\n", enco)
-		fmt.Printf("%v\n", tm)
-		fmt.Printf("温度:%f\n", tmp)
-		fmt.Printf("加速度X:%f\n", accx)
-		fmt.Printf("lenX:%d\n", len(accx))
-		fmt.Printf("加速度Y:%f\n", accy)
-		fmt.Printf("加速度Z:%f\n", accz)
+		// fmt.Printf("%v\n", tm)
+		// fmt.Printf("温度:%f\n", tmp)
+		// fmt.Printf("加速度X:%f\n", accx)
+		// fmt.Printf("加速度Y:%f\n", accy)
+		// fmt.Printf("加速度Z:%f\n", accz)
+		// fmt.Printf("JSON:%v\n", d)
+		je, _ := json.Marshal(d)
+		js = append(js, string(je))
+		fmt.Printf("%s\n", js)
 	}
 }
 
-// TransAccx : 一秒分324文字列から加速度Xの変換
-func TransAccx(s, xyz string) ([]float64, error) {
+// TransAcc : 一秒分324文字列から加速度Xの変換
+func TransAcc(s, xyz string) ([]float64, error) {
 	var (
 		acci int64 // バイトから読み取った文字列から変換したint加速度
 		err  error
