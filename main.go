@@ -89,7 +89,7 @@ func main() {
 		// fmt.Printf("加速度Y:%f\n", accy)
 		// fmt.Printf("加速度Z:%f\n", accz)
 		// fmt.Printf("JSON:%v\n", d)
-		je, _ := json.Marshal(d)
+		je, _ := json.MarshalIndent(d, "", "\t")
 		js = append(js, string(je))
 		fmt.Printf("%s\n", js)
 	}
