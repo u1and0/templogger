@@ -3,14 +3,13 @@ package main
 import (
 	"encoding/hex"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
 	"os"
 	"strconv"
 	"time"
 )
-
-const filename = "data/11211002.DAT"
 
 var js []string
 
@@ -27,7 +26,8 @@ type JSONelement struct {
 // type JSONdata map[time.Time]JSONelement
 
 func main() {
-	fp, err := os.Open(filename)
+	flag.Parse()
+	fp, err := os.Open(flag.Arg(0))
 	if err != nil {
 		panic(err)
 	}
