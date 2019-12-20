@@ -27,70 +27,72 @@ type JSONelement struct {
 
 func main() {
 	flag.Parse()
-	fp, err := os.Open(flag.Arg(0))
-	if err != nil {
-		panic(err)
-	}
-	defer fp.Close()
-
-	buf := make([]byte, 324) // 1秒あたり324Byte記録されている
-	for {
-		n, err := fp.Read(buf)
-		if n == 0 {
-			break
-		}
+	for _, file := range flag.Args() {
+		fp, err := os.Open(file)
 		if err != nil {
 			panic(err)
 		}
+		defer fp.Close()
 
-		enco := hex.EncodeToString(buf)
+		buf := make([]byte, 324) // 1秒あたり324Byte記録されている
+		for {
+			n, err := fp.Read(buf)
+			if n == 0 {
+				break
+			}
+			if err != nil {
+				panic(err)
+			}
 
-		// /* 日時変換 */
-		tm, err := TransTime(enco)
-		if err != nil {
-			log.Fatalln(err)
+			enco := hex.EncodeToString(buf)
+
+			// /* 日時変換 */
+			tm, err := TransTime(enco)
+			if err != nil {
+				log.Fatalln(err)
+			}
+
+			/* 温度変換 */
+			tmp, err := TransTemp(enco)
+			if err != nil {
+				log.Fatalln(err)
+			}
+
+			/* 加速度X */
+			accx, err := TransAcc(enco, "x")
+			if err != nil {
+				log.Fatalln(err)
+			}
+
+			/* 加速度Y */
+			accy, err := TransAcc(enco, "y")
+			if err != nil {
+				log.Fatalln(err)
+			}
+
+			/* 加速度Z */
+			accz, err := TransAcc(enco, "z")
+			if err != nil {
+				log.Fatalln(err)
+			}
+
+			/* 出力 */
+			d := new(JSONelement)
+			d.Time = tm
+			d.Temperature = tmp
+			d.Accx = accx
+			d.Accy = accy
+			d.Accz = accz
+			// fmt.Printf("%s\n", enco)
+			// fmt.Printf("%v\n", tm)
+			// fmt.Printf("温度:%f\n", tmp)
+			// fmt.Printf("加速度X:%f\n", accx)
+			// fmt.Printf("加速度Y:%f\n", accy)
+			// fmt.Printf("加速度Z:%f\n", accz)
+			// fmt.Printf("JSON:%v\n", d)
+			je, _ := json.MarshalIndent(d, "", "\t")
+			js = append(js, string(je))
 		}
-
-		/* 温度変換 */
-		tmp, err := TransTemp(enco)
-		if err != nil {
-			log.Fatalln(err)
-		}
-
-		/* 加速度X */
-		accx, err := TransAcc(enco, "x")
-		if err != nil {
-			log.Fatalln(err)
-		}
-
-		/* 加速度Y */
-		accy, err := TransAcc(enco, "y")
-		if err != nil {
-			log.Fatalln(err)
-		}
-
-		/* 加速度Z */
-		accz, err := TransAcc(enco, "z")
-		if err != nil {
-			log.Fatalln(err)
-		}
-
-		/* 出力 */
-		d := new(JSONelement)
-		d.Time = tm
-		d.Temperature = tmp
-		d.Accx = accx
-		d.Accy = accy
-		d.Accz = accz
-		// fmt.Printf("%s\n", enco)
-		// fmt.Printf("%v\n", tm)
-		// fmt.Printf("温度:%f\n", tmp)
-		// fmt.Printf("加速度X:%f\n", accx)
-		// fmt.Printf("加速度Y:%f\n", accy)
-		// fmt.Printf("加速度Z:%f\n", accz)
-		// fmt.Printf("JSON:%v\n", d)
-		je, _ := json.MarshalIndent(d, "", "\t")
-		js = append(js, string(je))
 	}
 	fmt.Printf("%s\n", js)
 }
