@@ -20,24 +20,27 @@ type Datum struct {
 	Accz        []float64 `json:"AccelerationZ"`
 }
 
-type (
-	encoded []byte
-)
-
 var data []*Datum
+
+// Encoded : バイナリファイルから読みだした16進数
+type Encoded struct {
+	Bytes  []byte
+	String string
+}
 
 func main() {
 	flag.Parse()
 	for _, file := range flag.Args() {
+		var e Encoded
 		fp, err := os.Open(file)
 		if err != nil {
 			panic(err)
 		}
 		defer fp.Close()
 
-		buf := make(encoded, 324) // 1秒あたり324Byte記録されている
+		e.Bytes = make([]byte, 324) // 1秒あたり324Byte記録されている
 		for {
-			n, err := fp.Read(buf)
+			n, err := fp.Read(e.Bytes)
 			if n == 0 {
 				break
 			}
@@ -45,34 +48,34 @@ func main() {
 				panic(err)
 			}
 
-			enco := hex.EncodeToString(buf)
+			e.String = hex.EncodeToString(e.Bytes)
 
 			// /* 日時変換 */
-			tm, err := TransTime(enco)
+			tm, err := e.transTime()
 			if err != nil {
 				log.Fatalln(err)
 			}
 
 			/* 温度変換 */
-			tmp, err := TransTemp(enco)
+			tmp, err := e.transTemp()
 			if err != nil {
 				log.Fatalln(err)
 			}
 
 			/* 加速度X */
-			accx, err := TransAcc(enco, "x")
+			accx, err := e.transAcc("x")
 			if err != nil {
 				log.Fatalln(err)
 			}
 
 			/* 加速度Y */
-			accy, err := TransAcc(enco, "y")
+			accy, err := e.transAcc("y")
 			if err != nil {
 				log.Fatalln(err)
 			}
 
 			/* 加速度Z */
-			accz, err := TransAcc(enco, "z")
+			accz, err := e.transAcc("z")
 			if err != nil {
 				log.Fatalln(err)
 			}
@@ -83,7 +86,8 @@ func main() {
 				Temperature: tmp,
 				Accx:        accx,
 				Accy:        accy,
-				Accz:        accz}
+				Accz:        accz,
+			}
 			data = append(data, d)
 		}
 	}
@@ -94,13 +98,14 @@ func main() {
 	fmt.Printf("%v\n", string(jdata))
 }
 
-// TransAcc : 一秒分324文字列から加速度Xの変換
-func TransAcc(s, xyz string) ([]float64, error) {
+// transAcc : 一秒分324文字列から加速度Xの変換
+func (e Encoded) transAcc(xyz string) ([]float64, error) {
 	var (
 		accu uint64 // バイトから読み取った文字列から変換したint加速度
 		err  error
 		acxl []float64 // 加速度配列
 	)
+	s := e.String
 	axis := map[string]int{"x": 48, "y": 52, "z": 56}
 	for i := axis[xyz]; i < len(s); i += 12 { // 初期バイトはxyzの方向による
 		ss := s[i+2:i+4] + s[i:i+2]
@@ -115,8 +120,9 @@ func TransAcc(s, xyz string) ([]float64, error) {
 	return acxl, err
 }
 
-// TransTime : 一秒分324文字列から日付・時間の変換
-func TransTime(s string) (time.Time, error) {
+// transTime : 一秒分324文字列から日付・時間の変換
+func (e Encoded) transTime() (time.Time, error) {
+	s := e.String
 	y, err := strconv.Atoi(s[2:4])
 	m, err := strconv.Atoi(s[0:2])
 	mm := time.Month(m) // 月のみMonth型をDate()関数に渡さなければならない
@@ -128,8 +134,9 @@ func TransTime(s string) (time.Time, error) {
 	return tm, err
 }
 
-// TransTemp : 一秒分324文字列から温度の変換
-func TransTemp(s string) (float64, error) {
+// transTemp : 一秒分324文字列から温度の変換
+func (e Encoded) transTemp() (float64, error) {
+	s := e.String
 	t, err := strconv.ParseInt(s[14:16]+s[12:14], 16, 0) // 16->10進数化
 	tmp := -45 + 175*float64(t)/65535
 	return tmp, err
