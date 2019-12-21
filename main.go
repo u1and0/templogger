@@ -11,19 +11,20 @@ import (
 	"time"
 )
 
-var js []string
-
-// JSONelement : JSON要素
-type JSONelement struct {
-	Time        time.Time `json:"TIME"`
-	Temperature float64   `json:"TEMPERATURE"`
-	Accx        []float64 `json:"ACCX"`
-	Accy        []float64 `json:"ACCY"`
-	Accz        []float64 `json:"ACCZ"`
+// Datum : JSON要素
+type Datum struct {
+	Time        time.Time `json:"Time"`
+	Temperature float64   `json:"Temperature"`
+	Accx        []float64 `json:"AccelerationX"`
+	Accy        []float64 `json:"AccelerationY"`
+	Accz        []float64 `json:"AccelerationZ"`
 }
 
-// JSONdata : JSON化
-// type JSONdata map[time.Time]JSONelement
+type (
+	encoded []byte
+)
+
+var data []*Datum
 
 func main() {
 	flag.Parse()
@@ -34,7 +35,7 @@ func main() {
 		}
 		defer fp.Close()
 
-		buf := make([]byte, 324) // 1秒あたり324Byte記録されている
+		buf := make(encoded, 324) // 1秒あたり324Byte記録されている
 		for {
 			n, err := fp.Read(buf)
 			if n == 0 {
@@ -77,24 +78,20 @@ func main() {
 			}
 
 			/* 出力 */
-			d := new(JSONelement)
-			d.Time = tm
-			d.Temperature = tmp
-			d.Accx = accx
-			d.Accy = accy
-			d.Accz = accz
-			// fmt.Printf("%s\n", enco)
-			// fmt.Printf("%v\n", tm)
-			// fmt.Printf("温度:%f\n", tmp)
-			// fmt.Printf("加速度X:%f\n", accx)
-			// fmt.Printf("加速度Y:%f\n", accy)
-			// fmt.Printf("加速度Z:%f\n", accz)
-			// fmt.Printf("JSON:%v\n", d)
-			je, _ := json.MarshalIndent(d, "", "\t")
-			js = append(js, string(je))
+			d := &Datum{
+				Time:        tm,
+				Temperature: tmp,
+				Accx:        accx,
+				Accy:        accy,
+				Accz:        accz}
+			data = append(data, d)
 		}
 	}
-	fmt.Printf("%s\n", js)
+	jdata, err := json.MarshalIndent(data, "", "\t")
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Printf("%v\n", string(jdata))
 }
 
 // TransAcc : 一秒分324文字列から加速度Xの変換
@@ -102,9 +99,9 @@ func TransAcc(s, xyz string) ([]float64, error) {
 	var (
 		accu uint64 // バイトから読み取った文字列から変換したint加速度
 		err  error
-		acxl []float64                                                  // 加速度配列
-		axis map[string]int = map[string]int{"x": 48, "y": 52, "z": 56} // 方向xyz
+		acxl []float64 // 加速度配列
 	)
+	axis := map[string]int{"x": 48, "y": 52, "z": 56}
 	for i := axis[xyz]; i < len(s); i += 12 { // 初期バイトはxyzの方向による
 		ss := s[i+2:i+4] + s[i:i+2]
 		accu, err = strconv.ParseUint(ss, 16, 0) // 16->10進数化
