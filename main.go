@@ -20,7 +20,7 @@ type Datum struct {
 	Accz        []float64 `json:"AccelerationZ"`
 }
 
-var data []*Datum
+type Data []*Datum
 
 // Encoded : バイナリファイルから読みだした16進数
 type Encoded struct {
@@ -29,6 +29,7 @@ type Encoded struct {
 }
 
 func main() {
+	data := Data{}
 	flag.Parse()
 	for _, file := range flag.Args() {
 		var e Encoded
@@ -50,32 +51,28 @@ func main() {
 
 			e.String = hex.EncodeToString(e.Bytes)
 
-			// /* 日時変換 */
-			tm, err := e.transTime()
+			/* 日時変換 */
+			tm, err := e.TransTime()
 			if err != nil {
 				log.Fatalln(err)
 			}
 
 			/* 温度変換 */
-			tmp, err := e.transTemp()
+			tmp, err := e.TransTemp()
 			if err != nil {
 				log.Fatalln(err)
 			}
 
-			/* 加速度X */
-			accx, err := e.transAcc("x")
+			/* 加速度 */
+			accx, err := e.TransAcc("x")
 			if err != nil {
 				log.Fatalln(err)
 			}
-
-			/* 加速度Y */
-			accy, err := e.transAcc("y")
+			accy, err := e.TransAcc("y")
 			if err != nil {
 				log.Fatalln(err)
 			}
-
-			/* 加速度Z */
-			accz, err := e.transAcc("z")
+			accz, err := e.TransAcc("z")
 			if err != nil {
 				log.Fatalln(err)
 			}
@@ -88,18 +85,18 @@ func main() {
 				Accy:        accy,
 				Accz:        accz,
 			}
-			data = append(data, d)
+			data = data.Add(d)
 		}
 	}
-	jdata, err := json.MarshalIndent(data, "", "\t")
+	jdata, err := data.Jsonize("\t")
 	if err != nil {
 		fmt.Println(err)
 	}
 	fmt.Printf("%v\n", string(jdata))
 }
 
-// transAcc : 一秒分324文字列から加速度Xの変換
-func (e Encoded) transAcc(xyz string) ([]float64, error) {
+// TransAcc : 一秒分324文字列から加速度Xの変換
+func (e Encoded) TransAcc(xyz string) ([]float64, error) {
 	var (
 		accu uint64 // バイトから読み取った文字列から変換したint加速度
 		err  error
@@ -120,8 +117,8 @@ func (e Encoded) transAcc(xyz string) ([]float64, error) {
 	return acxl, err
 }
 
-// transTime : 一秒分324文字列から日付・時間の変換
-func (e Encoded) transTime() (time.Time, error) {
+// TransTime : 一秒分324文字列から日付・時間の変換
+func (e Encoded) TransTime() (time.Time, error) {
 	s := e.String
 	y, err := strconv.Atoi(s[2:4])
 	m, err := strconv.Atoi(s[0:2])
@@ -134,10 +131,20 @@ func (e Encoded) transTime() (time.Time, error) {
 	return tm, err
 }
 
-// transTemp : 一秒分324文字列から温度の変換
-func (e Encoded) transTemp() (float64, error) {
+// TransTemp : 一秒分324文字列から温度の変換
+func (e Encoded) TransTemp() (float64, error) {
 	s := e.String
 	t, err := strconv.ParseInt(s[14:16]+s[12:14], 16, 0) // 16->10進数化
 	tmp := -45 + 175*float64(t)/65535
 	return tmp, err
+}
+
+// Add :append data slice
+func (d Data) Add(a *Datum) Data {
+	return append(d, a)
+}
+
+// Jsonize : json marshal
+func (d Data) Jsonize(s string) ([]byte, error) {
+	return json.MarshalIndent(d, "", s)
 }
