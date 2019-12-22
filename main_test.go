@@ -57,7 +57,21 @@ func TestTransAtemp(t *testing.T) {
 	e := Encoded{String: "0000000000000000000c10100000000"}
 	actual, err := e.TransAtemp()
 	expected := 33.31617096474676
-	/* 0x01c1 = 33.3167℃ */
+	/* 0x01c1 = 33.3162℃ */
+	if err != nil {
+		fmt.Println(err)
+	}
+	if actual != expected {
+		t.Fatalf("got: %v want: %v", actual, expected)
+	}
+}
+
+// 24ビット目から8ビットをジャイロに変換
+func TestTransGyro(t *testing.T) {
+	e := Encoded{String: "00000000000000000000000ff770"}
+	actual, err := e.TransGyro()
+	expected := 220.63446044921875
+	/* 0x01c1 = 220.63*/
 	if err != nil {
 		fmt.Println(err)
 	}

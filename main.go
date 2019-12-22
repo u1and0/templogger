@@ -17,6 +17,7 @@ type Datum struct {
 	Temp  float64   `json:"Temperature"`
 	Hum   float64   `json:"Humidity"`
 	Atemp float64   `json:"TemperatureAcc"`
+	Gyro  float64   `json:"Gyro"`
 	Accx  []float64 `json:"AccelerationX"`
 	Accy  []float64 `json:"AccelerationY"`
 	Accz  []float64 `json:"AccelerationZ"`
@@ -73,6 +74,11 @@ func main() {
 			if err != nil {
 				log.Fatalln(err)
 			}
+			/* ジャイロ */
+			gyro, err := e.TransGyro()
+			if err != nil {
+				log.Fatalln(err)
+			}
 			/* 加速度 */
 			accx, err := e.TransAcc("x")
 			if err != nil {
@@ -92,6 +98,7 @@ func main() {
 				Temp:  tmp,
 				Hum:   hum,
 				Atemp: atmp,
+				Gyro:  gyro,
 				Accx:  accx,
 				Accy:  accy,
 				Accz:  accz,
@@ -145,6 +152,17 @@ func (e Encoded) TransAtemp() (float64, error) {
 	}
 	atmp := float64(int16(a))/333.87 + 21
 	return atmp, err
+}
+
+// TransGyro : 一秒分324文字列から加速度付属の温度センサーの変換
+func (e Encoded) TransGyro() (float64, error) {
+	s := e.String
+	a, err := strconv.ParseUint(s[26:28]+s[24:26], 16, 0) // 16->10進数化
+	if err != nil {
+		fmt.Println(err)
+	}
+	g := 250 * float64(int16(a)) / 32768
+	return g, err
 }
 
 // TransAcc : 一秒分324文字列から加速度の変換
