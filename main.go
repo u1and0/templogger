@@ -13,14 +13,15 @@ import (
 
 // Datum : 1秒当たりのデータ
 type Datum struct {
-	Time  time.Time `json:"Time"`
-	Temp  float64   `json:"Temperature"`
-	Hum   float64   `json:"Humidity"`
-	Atemp float64   `json:"TemperatureAcc"`
-	Gyro  float64   `json:"Gyro"`
-	Accx  []float64 `json:"AccelerationX"`
-	Accy  []float64 `json:"AccelerationY"`
-	Accz  []float64 `json:"AccelerationZ"`
+	Time    time.Time `json:"Time"`
+	Temp    float64   `json:"Temperature"`
+	Hum     float64   `json:"Humidity"`
+	Atemp   float64   `json:"TemperatureAcc"`
+	Gyro    float64   `json:"Gyro"`
+	Compass float64   `json:"Compass"`
+	Accx    []float64 `json:"AccelerationX"`
+	Accy    []float64 `json:"AccelerationY"`
+	Accz    []float64 `json:"AccelerationZ"`
 }
 
 // Data : 読み込んだファイル内のデータすべてを入れるスライス
@@ -79,6 +80,11 @@ func main() {
 			if err != nil {
 				log.Fatalln(err)
 			}
+			/* コンパス */
+			comp, err := e.TransCompass()
+			if err != nil {
+				log.Fatalln(err)
+			}
 			/* 加速度 */
 			accx, err := e.TransAcc("x")
 			if err != nil {
@@ -94,14 +100,15 @@ func main() {
 			}
 			/* 出力 */
 			d := &Datum{
-				Time:  tm,
-				Temp:  tmp,
-				Hum:   hum,
-				Atemp: atmp,
-				Gyro:  gyro,
-				Accx:  accx,
-				Accy:  accy,
-				Accz:  accz,
+				Time:    tm,
+				Temp:    tmp,
+				Hum:     hum,
+				Atemp:   atmp,
+				Gyro:    gyro,
+				Compass: comp,
+				Accx:    accx,
+				Accy:    accy,
+				Accz:    accz,
 			}
 			data = data.Append(d)
 		}
@@ -162,6 +169,17 @@ func (e Encoded) TransGyro() (float64, error) {
 		fmt.Println(err)
 	}
 	g := 250 * float64(int16(a)) / 32768
+	return g, err
+}
+
+// TransCompass : 一秒分324文字列から加速度付属の温度センサーの変換
+func (e Encoded) TransCompass() (float64, error) {
+	s := e.String
+	a, err := strconv.ParseUint(s[38:40]+s[36:38], 16, 0) // 16->10進数化
+	if err != nil {
+		fmt.Println(err)
+	}
+	g := 4800 * float64(int16(a)) / 32768
 	return g, err
 }
 
