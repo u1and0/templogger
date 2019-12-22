@@ -11,16 +11,18 @@ import (
 	"time"
 )
 
-// Datum : JSON要素
+// Datum : 1秒当たりのデータ
 type Datum struct {
-	Time time.Time `json:"Time"`
-	Temp float64   `json:"Temperature"`
-	Hum  float64   `json:"Humidity"`
-	Accx []float64 `json:"AccelerationX"`
-	Accy []float64 `json:"AccelerationY"`
-	Accz []float64 `json:"AccelerationZ"`
+	Time  time.Time `json:"Time"`
+	Temp  float64   `json:"Temperature"`
+	Hum   float64   `json:"Humidity"`
+	Atemp float64   `json:"TemperatureAcc"`
+	Accx  []float64 `json:"AccelerationX"`
+	Accy  []float64 `json:"AccelerationY"`
+	Accz  []float64 `json:"AccelerationZ"`
 }
 
+// Data : 読み込んだファイル内のデータすべてを入れるスライス
 type Data []*Datum
 
 // Encoded : バイナリファイルから読みだした16進数
@@ -51,18 +53,23 @@ func main() {
 			}
 
 			e.String = hex.EncodeToString(e.Bytes)
-			/* 日時変換 */
+			/* 日時 */
 			tm, err := e.TransTime()
 			if err != nil {
 				log.Fatalln(err)
 			}
-			/* 温度変換 */
+			/* 温度 */
 			tmp, err := e.TransTemp()
 			if err != nil {
 				log.Fatalln(err)
 			}
 			/* 湿度 */
 			hum, err := e.TransHum()
+			if err != nil {
+				log.Fatalln(err)
+			}
+			/* 加速度センサー内の温度 */
+			atmp, err := e.TransAtemp()
 			if err != nil {
 				log.Fatalln(err)
 			}
@@ -81,12 +88,13 @@ func main() {
 			}
 			/* 出力 */
 			d := &Datum{
-				Time: tm,
-				Temp: tmp,
-				Hum:  hum,
-				Accx: accx,
-				Accy: accy,
-				Accz: accz,
+				Time:  tm,
+				Temp:  tmp,
+				Hum:   hum,
+				Atemp: atmp,
+				Accx:  accx,
+				Accy:  accy,
+				Accz:  accz,
 			}
 			data = data.Append(d)
 		}
@@ -126,6 +134,17 @@ func (e Encoded) TransHum() (float64, error) {
 	t, err := strconv.ParseInt(s[18:20]+s[16:18], 16, 0) // 16->10進数化
 	hum := 100 * float64(t) / 65535
 	return hum, err
+}
+
+// TransAtemp : 一秒分324文字列から加速度付属の温度センサーの変換
+func (e Encoded) TransAtemp() (float64, error) {
+	s := e.String
+	a, err := strconv.ParseUint(s[22:24]+s[20:22], 16, 0) // 16->10進数化
+	if err != nil {
+		fmt.Println(err)
+	}
+	atmp := float64(int16(a))/333.87 + 21
+	return atmp, err
 }
 
 // TransAcc : 一秒分324文字列から加速度の変換

@@ -6,9 +6,9 @@ import (
 	"time"
 )
 
-// 先頭から12バイトを時間に変換
+// 先頭から12ビットを時間に変換
 func TestTransTime(t *testing.T) {
-	e := Encoded{String: "1119132336336e68f8d8101e9ffd000"}
+	e := Encoded{String: "1119132336330000000000000000000"}
 	actual, err := e.TransTime()
 	expected := time.Date(2019, 11, 23, 13, 33, 36, 0, time.Local)
 	/*
@@ -24,9 +24,9 @@ func TestTransTime(t *testing.T) {
 	}
 }
 
-// 12バイト目から8ビットを温度に変換
+// 12ビット目から8ビットを温度に変換
 func TestTransTemp(t *testing.T) {
-	e := Encoded{String: "1119132336336e68f8d8101e9ffd000"}
+	e := Encoded{String: "0000000000006e68000000000000000"}
 	actual, err := e.TransTemp()
 	expected := 26.38857099259937
 	/* 0x686e = 26.38℃ */
@@ -38,12 +38,26 @@ func TestTransTemp(t *testing.T) {
 	}
 }
 
-// 16バイト目から8ビットを温度に変換
+// 16ビット目から8ビットを温度に変換
 func TestTransHum(t *testing.T) {
-	e := Encoded{String: "1119132336336e68b78c101e9ffd000"}
+	e := Encoded{String: "0000000000000000b78c00000000000"}
 	actual, err := e.TransHum()
 	expected := 54.96757457846952
 	/* 0x686e = 54.9676% */
+	if err != nil {
+		fmt.Println(err)
+	}
+	if actual != expected {
+		t.Fatalf("got: %v want: %v", actual, expected)
+	}
+}
+
+// 20ビット目から8ビットを温度に変換
+func TestTransAtemp(t *testing.T) {
+	e := Encoded{String: "0000000000000000000c10100000000"}
+	actual, err := e.TransAtemp()
+	expected := 33.31617096474676
+	/* 0x01c1 = 33.3167℃ */
 	if err != nil {
 		fmt.Println(err)
 	}
