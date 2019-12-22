@@ -13,11 +13,12 @@ import (
 
 // Datum : JSON要素
 type Datum struct {
-	Time        time.Time `json:"Time"`
-	Temperature float64   `json:"Temperature"`
-	Accx        []float64 `json:"AccelerationX"`
-	Accy        []float64 `json:"AccelerationY"`
-	Accz        []float64 `json:"AccelerationZ"`
+	Time time.Time `json:"Time"`
+	Temp float64   `json:"Temperature"`
+	Hum  float64   `json:"Humidity"`
+	Accx []float64 `json:"AccelerationX"`
+	Accy []float64 `json:"AccelerationY"`
+	Accz []float64 `json:"AccelerationZ"`
 }
 
 type Data []*Datum
@@ -50,19 +51,21 @@ func main() {
 			}
 
 			e.String = hex.EncodeToString(e.Bytes)
-
 			/* 日時変換 */
 			tm, err := e.TransTime()
 			if err != nil {
 				log.Fatalln(err)
 			}
-
 			/* 温度変換 */
 			tmp, err := e.TransTemp()
 			if err != nil {
 				log.Fatalln(err)
 			}
-
+			/* 湿度 */
+			hum, err := e.TransHum()
+			if err != nil {
+				log.Fatalln(err)
+			}
 			/* 加速度 */
 			accx, err := e.TransAcc("x")
 			if err != nil {
@@ -76,16 +79,16 @@ func main() {
 			if err != nil {
 				log.Fatalln(err)
 			}
-
 			/* 出力 */
 			d := &Datum{
-				Time:        tm,
-				Temperature: tmp,
-				Accx:        accx,
-				Accy:        accy,
-				Accz:        accz,
+				Time: tm,
+				Temp: tmp,
+				Hum:  hum,
+				Accx: accx,
+				Accy: accy,
+				Accz: accz,
 			}
-			data = data.Add(d)
+			data = data.Append(d)
 		}
 	}
 	jdata, err := data.Jsonize("\t")
@@ -93,28 +96,6 @@ func main() {
 		fmt.Println(err)
 	}
 	fmt.Printf("%v\n", string(jdata))
-}
-
-// TransAcc : 一秒分324文字列から加速度Xの変換
-func (e Encoded) TransAcc(xyz string) ([]float64, error) {
-	var (
-		accu uint64 // バイトから読み取った文字列から変換したint加速度
-		err  error
-		acxl []float64 // 加速度配列
-	)
-	s := e.String
-	axis := map[string]int{"x": 48, "y": 52, "z": 56}
-	for i := axis[xyz]; i < len(s); i += 12 { // 初期バイトはxyzの方向による
-		ss := s[i+2:i+4] + s[i:i+2]
-		accu, err = strconv.ParseUint(ss, 16, 0) // 16->10進数化
-		if err != nil {
-			fmt.Println(err)
-		}
-		acci := int16(accu) // 一気にfloatに渡してはいけない
-		// なぜなら、Uintの補数をintとして換算しないと小数点計算されてしまう
-		acxl = append(acxl, 16000*float64(acci)/32768) // 換算加速度を加速度配列に格納
-	}
-	return acxl, err
 }
 
 // TransTime : 一秒分324文字列から日付・時間の変換
@@ -139,8 +120,38 @@ func (e Encoded) TransTemp() (float64, error) {
 	return tmp, err
 }
 
-// Add :append data slice
-func (d Data) Add(a *Datum) Data {
+// TransHum : 一秒分324文字列から湿度の変換
+func (e Encoded) TransHum() (float64, error) {
+	s := e.String
+	t, err := strconv.ParseInt(s[18:20]+s[16:18], 16, 0) // 16->10進数化
+	hum := 100 * float64(t) / 65535
+	return hum, err
+}
+
+// TransAcc : 一秒分324文字列から加速度の変換
+func (e Encoded) TransAcc(xyz string) ([]float64, error) {
+	var (
+		accu uint64 // バイトから読み取った文字列から変換したint加速度
+		err  error
+		acxl []float64 // 加速度配列
+	)
+	s := e.String
+	axis := map[string]int{"x": 48, "y": 52, "z": 56}
+	for i := axis[xyz]; i < len(s); i += 12 { // 初期バイトはxyzの方向による
+		ss := s[i+2:i+4] + s[i:i+2]
+		accu, err = strconv.ParseUint(ss, 16, 0) // 16->10進数化
+		if err != nil {
+			fmt.Println(err)
+		}
+		acci := int16(accu) // 一気にfloatに渡してはいけない
+		// なぜなら、Uintの補数をintとして換算しないと小数点計算されてしまう
+		acxl = append(acxl, 16000*float64(acci)/32768) // 換算加速度を加速度配列に格納
+	}
+	return acxl, err
+}
+
+// Append :append data slice
+func (d Data) Append(a *Datum) Data {
 	return append(d, a)
 }
 

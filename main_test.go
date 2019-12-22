@@ -24,7 +24,7 @@ func TestTransTime(t *testing.T) {
 	}
 }
 
-// 12バイト目から4バイトを温度に変換
+// 12バイト目から8ビットを温度に変換
 func TestTransTemp(t *testing.T) {
 	e := Encoded{String: "1119132336336e68f8d8101e9ffd000"}
 	actual, err := e.TransTemp()
@@ -38,18 +38,32 @@ func TestTransTemp(t *testing.T) {
 	}
 }
 
-func TestAdd(t *testing.T) {
-	a1 := &Datum{Temperature: 10}
-	a2 := &Datum{Temperature: 20}
+// 16バイト目から8ビットを温度に変換
+func TestTransHum(t *testing.T) {
+	e := Encoded{String: "1119132336336e68b78c101e9ffd000"}
+	actual, err := e.TransHum()
+	expected := 54.96757457846952
+	/* 0x686e = 54.9676% */
+	if err != nil {
+		fmt.Println(err)
+	}
+	if actual != expected {
+		t.Fatalf("got: %v want: %v", actual, expected)
+	}
+}
+
+func TestAppend(t *testing.T) {
+	a1 := &Datum{Temp: 10}
+	a2 := &Datum{Temp: 20}
 	d := Data{a1}
-	actual := d.Add(a2)
+	actual := d.Append(a2)
 	expected := []Datum{Datum{
-		Temperature: 10},
-		Datum{Temperature: 20},
+		Temp: 10},
+		Datum{Temp: 20},
 	}
 	for i, e := range expected {
-		if actual[i].Temperature != e.Temperature {
-			t.Fatalf("got: %v want: %v", actual[i].Temperature, e.Temperature)
+		if actual[i].Temp != e.Temp {
+			t.Fatalf("got: %v want: %v", actual[i].Temp, e.Temp)
 		}
 	}
 }
