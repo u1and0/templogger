@@ -13,15 +13,19 @@ import (
 
 // Datum : 1秒当たりのデータ
 type Datum struct {
-	Time    time.Time `json:"Time"`
-	Temp    float64   `json:"Temperature"`
-	Hum     float64   `json:"Humidity"`
-	Atemp   float64   `json:"TemperatureAcc"`
-	Gyro    float64   `json:"Gyro"`
-	Compass float64   `json:"Compass"`
-	Accx    []float64 `json:"AccelerationX"`
-	Accy    []float64 `json:"AccelerationY"`
-	Accz    []float64 `json:"AccelerationZ"`
+	Time  time.Time `json:"Time"`
+	Temp  float64   `json:"Temperature"`
+	Hum   float64   `json:"Humidity"`
+	Atemp float64   `json:"TemperatureAcc"`
+	Gyrox float64   `json:"GyroX"`
+	Gyroy float64   `json:"GyroY"`
+	Gyroz float64   `json:"GyroZ"`
+	Compx float64   `json:"CompassX"`
+	Compy float64   `json:"CompassY"`
+	Compz float64   `json:"CompassZ"`
+	Accx  []float64 `json:"AccelerationX"`
+	Accy  []float64 `json:"AccelerationY"`
+	Accz  []float64 `json:"AccelerationZ"`
 }
 
 // Data : 読み込んだファイル内のデータすべてを入れるスライス
@@ -76,12 +80,28 @@ func main() {
 				log.Fatalln(err)
 			}
 			/* ジャイロ */
-			gyro, err := e.TransGyro()
+			gyrox, err := e.TransGyro("x")
+			if err != nil {
+				log.Fatalln(err)
+			}
+			gyroy, err := e.TransGyro("y")
+			if err != nil {
+				log.Fatalln(err)
+			}
+			gyroz, err := e.TransGyro("z")
 			if err != nil {
 				log.Fatalln(err)
 			}
 			/* コンパス */
-			comp, err := e.TransCompass()
+			compx, err := e.TransCompass("x")
+			if err != nil {
+				log.Fatalln(err)
+			}
+			compy, err := e.TransCompass("y")
+			if err != nil {
+				log.Fatalln(err)
+			}
+			compz, err := e.TransCompass("z")
 			if err != nil {
 				log.Fatalln(err)
 			}
@@ -100,15 +120,19 @@ func main() {
 			}
 			/* 出力 */
 			d := &Datum{
-				Time:    tm,
-				Temp:    tmp,
-				Hum:     hum,
-				Atemp:   atmp,
-				Gyro:    gyro,
-				Compass: comp,
-				Accx:    accx,
-				Accy:    accy,
-				Accz:    accz,
+				Time:  tm,
+				Temp:  tmp,
+				Hum:   hum,
+				Atemp: atmp,
+				Gyrox: gyrox,
+				Gyroy: gyroy,
+				Gyroz: gyroz,
+				Compx: compx,
+				Compy: compy,
+				Compz: compz,
+				Accx:  accx,
+				Accy:  accy,
+				Accz:  accz,
 			}
 			data = data.Append(d)
 		}
@@ -161,10 +185,11 @@ func (e Encoded) TransAtemp() (float64, error) {
 	return atmp, err
 }
 
-// TransGyro : 一秒分324文字列から加速度付属の温度センサーの変換
-func (e Encoded) TransGyro() (float64, error) {
+// TransGyro : 一秒分324文字列からジャイロセンサーの変換
+func (e Encoded) TransGyro(xyz string) (float64, error) {
 	s := e.String
-	a, err := strconv.ParseUint(s[26:28]+s[24:26], 16, 0) // 16->10進数化
+	i := map[string]int{"x": 24, "y": 28, "z": 32}[xyz]
+	a, err := strconv.ParseUint(s[i+2:i+4]+s[i:i+2], 16, 0) // 16->10進数化
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -172,10 +197,11 @@ func (e Encoded) TransGyro() (float64, error) {
 	return g, err
 }
 
-// TransCompass : 一秒分324文字列から加速度付属の温度センサーの変換
-func (e Encoded) TransCompass() (float64, error) {
+// TransCompass : 一秒分324文字列からコンパスセンサーの変換
+func (e Encoded) TransCompass(xyz string) (float64, error) {
 	s := e.String
-	a, err := strconv.ParseUint(s[38:40]+s[36:38], 16, 0) // 16->10進数化
+	i := map[string]int{"x": 36, "y": 40, "z": 44}[xyz]
+	a, err := strconv.ParseUint(s[i+2:i+4]+s[i:i+2], 16, 0) // 16->10進数化
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -185,22 +211,20 @@ func (e Encoded) TransCompass() (float64, error) {
 
 // TransAcc : 一秒分324文字列から加速度の変換
 func (e Encoded) TransAcc(xyz string) ([]float64, error) {
+	s := e.String
+	x := map[string]int{"x": 48, "y": 52, "z": 56}
 	var (
-		accu uint64 // バイトから読み取った文字列から変換したint加速度
 		err  error
 		acxl []float64 // 加速度配列
 	)
-	s := e.String
-	axis := map[string]int{"x": 48, "y": 52, "z": 56}
-	for i := axis[xyz]; i < len(s); i += 12 { // 初期バイトはxyzの方向による
-		ss := s[i+2:i+4] + s[i:i+2]
-		accu, err = strconv.ParseUint(ss, 16, 0) // 16->10進数化
+	for i := x[xyz]; i < len(s); i += 12 { // 初期バイトはxyzの方向による
+		a, err := strconv.ParseUint(s[i+2:i+4]+s[i:i+2], 16, 0) // 16->10進数化
 		if err != nil {
 			fmt.Println(err)
 		}
-		acci := int16(accu) // 一気にfloatに渡してはいけない
+		// 一気にfloatに渡してはいけない
 		// なぜなら、Uintの補数をintとして換算しないと小数点計算されてしまう
-		acxl = append(acxl, 16000*float64(acci)/32768) // 換算加速度を加速度配列に格納
+		acxl = append(acxl, 16000*float64(int16(a))/32768) // 換算加速度を加速度配列に格納
 	}
 	return acxl, err
 }
