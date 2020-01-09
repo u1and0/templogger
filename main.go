@@ -1,3 +1,13 @@
+/*
+SDカードにためたバイナリデータをテキスト(json形式)にして標準出力にdumpします。
+	使用方法:
+	単一のファイルをJSON化
+		templogger data/12161037.DAT
+	複数のファイルをJSON化
+		templogger data/12161037.DAT data/12161237.DAT
+	すべてのDATファイルをJSON化
+		templogger data/*.DAT
+*/
 package main
 
 import (
@@ -18,6 +28,7 @@ const (
 
 var (
 	showVersion bool
+	showHelp    bool
 )
 
 // Datum : 1秒当たりのデータ
@@ -49,12 +60,27 @@ type Encoded struct {
 func main() {
 	flag.BoolVar(&showVersion, "v", false, "show version")
 	flag.BoolVar(&showVersion, "version", false, "show version")
+	flag.BoolVar(&showHelp, "h", false, "show help")
+	flag.BoolVar(&showHelp, "help", false, "show help")
 	data := Data{}
 	flag.Parse()
 
 	if showVersion {
 		fmt.Println("version:", VERSION)
 		return // versionを表示して終了
+	}
+
+	if showHelp {
+		fmt.Println(`SDカードにためたバイナリデータをテキスト(json形式)にして標準出力にdumpします。
+Usage:
+単一のファイルをJSON化
+	templogger data/12161037.DAT
+複数のファイルをJSON化
+	templogger data/12161037.DAT data/12161237.DAT
+すべてのDATファイルをJSON化
+	templogger data/*.DAT
+		`)
+		return // helpを表示して終了
 	}
 
 	for _, file := range flag.Args() {
