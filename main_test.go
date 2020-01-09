@@ -69,7 +69,7 @@ func TestTransAtemp(t *testing.T) {
 // 24ビット目から8ビットをジャイロに変換
 func TestTransGyro(t *testing.T) {
 	e := Encoded{String: "00000000000000000000000ff770"}
-	actual, err := e.TransGyro()
+	actual, err := e.TransGyro("x")
 	expected := 220.63446044921875
 	/* 0x01c1 = 220.63*/
 	if err != nil {

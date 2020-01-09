@@ -11,6 +11,15 @@ import (
 	"time"
 )
 
+const (
+	// VERSION : version
+	VERSION = "0.1.1"
+)
+
+var (
+	showVersion bool
+)
+
 // Datum : 1秒当たりのデータ
 type Datum struct {
 	Time  time.Time `json:"Time"`
@@ -38,8 +47,16 @@ type Encoded struct {
 }
 
 func main() {
+	flag.BoolVar(&showVersion, "v", false, "show version")
+	flag.BoolVar(&showVersion, "version", false, "show version")
 	data := Data{}
 	flag.Parse()
+
+	if showVersion {
+		fmt.Println("version:", VERSION)
+		return // versionを表示して終了
+	}
+
 	for _, file := range flag.Args() {
 		var e Encoded
 		fp, err := os.Open(file)
