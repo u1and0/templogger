@@ -23,12 +23,20 @@ import (
 
 const (
 	// VERSION : version
-	VERSION = "0.1.1"
+	VERSION = "0.2.0"
 )
 
 var (
+	// バージョンフラグ
 	showVersion bool
-	showHelp    bool
+	// ヘルプフラグ
+	showHelp bool
+	// インデントフラグ
+	indent bool
+	// 最終的にPrintするJSONデータ
+	jdata []byte
+	// エラー
+	err error
 )
 
 // Datum : 1秒当たりのデータ
@@ -62,11 +70,13 @@ func main() {
 	flag.BoolVar(&showVersion, "version", false, "show version")
 	flag.BoolVar(&showHelp, "h", false, "show help")
 	flag.BoolVar(&showHelp, "help", false, "show help")
+	flag.BoolVar(&indent, "t", false, "indent to format output")
+	flag.BoolVar(&indent, "indent", false, "indent to format output")
 	data := Data{}
 	flag.Parse()
 
 	if showVersion {
-		fmt.Println("version:", VERSION)
+		fmt.Println("templogger version:", VERSION)
 		return // versionを表示して終了
 	}
 
@@ -180,7 +190,11 @@ Usage:
 			data = data.Append(d)
 		}
 	}
-	jdata, err := data.Jsonize("\t")
+	if indent {
+		jdata, err = json.MarshalIndent(data, "", "\t")
+	} else {
+		jdata, err = json.Marshal(data)
+	}
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -275,9 +289,4 @@ func (e Encoded) TransAcc(xyz string) ([]float64, error) {
 // Append :append data slice
 func (d Data) Append(a *Datum) Data {
 	return append(d, a)
-}
-
-// Jsonize : json marshal
-func (d Data) Jsonize(s string) ([]byte, error) {
-	return json.MarshalIndent(d, "", s)
 }
