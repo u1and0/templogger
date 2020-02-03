@@ -7,6 +7,8 @@ SDカードにためたバイナリデータをテキスト(json形式)にして
 		templogger data/12161037.DAT data/12161237.DAT
 	すべてのDATファイルをJSON化
 		templogger data/*.DAT
+	-tオプションで読みやすいようにインデントを入れます
+		templogger -t data/*.DAT
 */
 package main
 
