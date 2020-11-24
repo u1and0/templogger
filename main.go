@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/csv"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -8,13 +9,14 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"strconv"
 	"time"
 )
 
 const (
 	// VERSION : version
-	VERSION = "0.2.1"
+	VERSION = "0.2.1r"
 )
 
 var (
@@ -170,7 +172,7 @@ func main() {
 			if err != nil {
 				log.Fatalln(err)
 			}
-			/* 出力 */
+			// Compile data
 			d := &Datum{
 				Time:  tm,
 				Temp:  tmp,
@@ -187,14 +189,40 @@ func main() {
 				Accz:  accz,
 			}
 			data = data.Append(d)
+			/* 行ごとではなく一度にdumpする理由
+			JSON Array形式で出力するので、
+			Arrayの接続の,とか終わりの]とか出力するのが難しいので、
+			goのオブジェクト上でSliceにしてそれをJson Marshalかけるのが楽。
+			いずれにせよcsv出力するときはappendしてSliceオブジェクトにするので、
+			1行ずつ出力することにパフォーマンスの改善もない。
+			*/
 		}
 	}
 
 	// Output
 	switch dumpFormat {
-	case "csv":
-		fmt.Println("hoge")
-	case "json":
+	case "csv": // dump to a file
+		// create a csv file
+		// file name is a first argument of dat file
+		filename := TrimExtension(flag.Args()[0]) + ".csv"
+		f, err := os.Create(filename)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		defer f.Close()
+		w := csv.NewWriter(f)
+
+		layout := "2006-01-02 15:04:05"     // time format
+		w.Write([]string{"時間", "温度", "湿度"}) // csv header
+		for _, d := range data {            // csv items
+			var record []string
+			record = append(record, d.Time.Format(layout))
+			record = append(record, fmt.Sprintf("%0.4f", d.Temp))
+			record = append(record, fmt.Sprintf("%0.4f", d.Hum))
+			w.Write(record)
+		}
+		w.Flush()
+	case "json": // dump to stdout
 		out, err := data.ToJSON(indent)
 		if err != nil {
 			log.Fatalf("%s", err)
@@ -289,6 +317,11 @@ func (e Encoded) TransAcc(xyz string) ([]float64, error) {
 		acxl = append(acxl, 16000*float64(int16(a))/32768) // 換算加速度を加速度配列に格納
 	}
 	return acxl, err
+}
+
+// TrimExtension : trim file extensiton
+func TrimExtension(filename string) string {
+	return filename[:len(filename)-len(filepath.Ext(filename))]
 }
 
 // Append :append data slice
