@@ -333,16 +333,32 @@ func (d Data) ToCSV() error {
 		return err
 	}
 	defer f.Close()
+	// w := csv.NewWriter(f) // as UTF-8
 	// Create japanese sjis csv file
-	w := csv.NewWriter(transform.NewWriter(f, japanese.ShiftJIS.NewEncoder()))
+	w := csv.NewWriter(transform.NewWriter(f, japanese.ShiftJIS.NewEncoder())) // as SJIS
 
-	layout := "2006-01-02 15:04:05"     // time format
-	w.Write([]string{"時間", "温度", "湿度"}) // csv header
-	for _, datum := range d {           // csv items
+	layout := "2006-01-02 15:04:05" // time format
+	// csv header
+	w.Write([]string{
+		"時間", "温度", "湿度",
+		"ジャイロX", "ジャイロY", "ジャイロZ",
+		"コンパスX", "コンパスY", "コンパスZ",
+		"加速度X", "加速度Y", "加速度Z",
+	})
+	for _, datum := range d { // csv items
 		var record []string
 		record = append(record, datum.Time.Format(layout))
 		record = append(record, fmt.Sprintf("%0.4f", datum.Temp))
 		record = append(record, fmt.Sprintf("%0.4f", datum.Hum))
+		record = append(record, fmt.Sprintf("%0.4f", datum.Gyrox))
+		record = append(record, fmt.Sprintf("%0.4f", datum.Gyroy))
+		record = append(record, fmt.Sprintf("%0.4f", datum.Gyroz))
+		record = append(record, fmt.Sprintf("%0.4f", datum.Compx))
+		record = append(record, fmt.Sprintf("%0.4f", datum.Compy))
+		record = append(record, fmt.Sprintf("%0.4f", datum.Compz))
+		record = append(record, fmt.Sprintf("%0.4f", datum.Accx[len(datum.Accx)-1]))
+		record = append(record, fmt.Sprintf("%0.4f", datum.Accy[len(datum.Accy)-1]))
+		record = append(record, fmt.Sprintf("%0.4f", datum.Accz[len(datum.Accz)-1]))
 		w.Write(record)
 	}
 	w.Flush()
