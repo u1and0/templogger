@@ -1,15 +1,3 @@
-/*
-SDカードにためたバイナリデータをテキスト(json形式)にして標準出力にdumpします。
-	使用方法:
-	単一のファイルをJSON化
-		templogger data/12161037.DAT
-	複数のファイルをJSON化
-		templogger data/12161037.DAT data/12161237.DAT
-	すべてのDATファイルをJSON化
-		templogger data/*.DAT
-	-tオプションで読みやすいようにインデントを入れます
-		templogger -t data/*.DAT
-*/
 package main
 
 import (
@@ -25,7 +13,7 @@ import (
 
 const (
 	// VERSION : version
-	VERSION = "0.2.0"
+	VERSION = "0.2.1"
 )
 
 var (
@@ -67,11 +55,30 @@ type Encoded struct {
 	String string
 }
 
+func flagUsage() {
+	usageText := `SDカードにためたバイナリデータをテキスト(JSON形式)にして標準出力にdumpします。
+
+Usage:
+単一のファイルをJSON化
+	templogger data/12161037.DAT
+複数のファイルをJSON化
+	templogger data/12161037.DAT data/12161237.DAT
+すべてのDATファイルをJSON化
+	templogger data/*.DAT
+-tオプションで読みやすいようにインデントを入れます
+	templogger -t data/*.DAT
+
+-h, -help		show help message
+-t, -indent		indent to format output
+-v, -version	show version
+`
+	fmt.Fprintf(os.Stderr, "%s\n\n", usageText)
+}
+
 func main() {
+	flag.Usage = flagUsage
 	flag.BoolVar(&showVersion, "v", false, "show version")
 	flag.BoolVar(&showVersion, "version", false, "show version")
-	flag.BoolVar(&showHelp, "h", false, "show help")
-	flag.BoolVar(&showHelp, "help", false, "show help")
 	flag.BoolVar(&indent, "t", false, "indent to format output")
 	flag.BoolVar(&indent, "indent", false, "indent to format output")
 	data := Data{}
@@ -80,19 +87,6 @@ func main() {
 	if showVersion {
 		fmt.Println("templogger version:", VERSION)
 		return // versionを表示して終了
-	}
-
-	if showHelp {
-		fmt.Println(`SDカードにためたバイナリデータをテキスト(json形式)にして標準出力にdumpします。
-Usage:
-単一のファイルをJSON化
-	templogger data/12161037.DAT
-複数のファイルをJSON化
-	templogger data/12161037.DAT data/12161237.DAT
-すべてのDATファイルをJSON化
-	templogger data/*.DAT
-		`)
-		return // helpを表示して終了
 	}
 
 	for _, file := range flag.Args() {
