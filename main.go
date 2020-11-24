@@ -347,18 +347,20 @@ func (d Data) ToCSV() error {
 	})
 	for _, datum := range d { // csv items
 		var record []string
-		record = append(record, datum.Time.Format(layout))
-		record = append(record, fmt.Sprintf("%0.4f", datum.Temp))
-		record = append(record, fmt.Sprintf("%0.4f", datum.Hum))
-		record = append(record, fmt.Sprintf("%0.4f", datum.Gyrox))
-		record = append(record, fmt.Sprintf("%0.4f", datum.Gyroy))
-		record = append(record, fmt.Sprintf("%0.4f", datum.Gyroz))
-		record = append(record, fmt.Sprintf("%0.4f", datum.Compx))
-		record = append(record, fmt.Sprintf("%0.4f", datum.Compy))
-		record = append(record, fmt.Sprintf("%0.4f", datum.Compz))
-		record = append(record, fmt.Sprintf("%0.4f", datum.Accx[len(datum.Accx)-1]))
-		record = append(record, fmt.Sprintf("%0.4f", datum.Accy[len(datum.Accy)-1]))
-		record = append(record, fmt.Sprintf("%0.4f", datum.Accz[len(datum.Accz)-1]))
+		record = append(record,
+			datum.Time.Format(layout),
+			fmt.Sprintf("%0.4f", datum.Temp),
+			fmt.Sprintf("%0.4f", datum.Hum),
+			fmt.Sprintf("%0.4f", datum.Gyrox),
+			fmt.Sprintf("%0.4f", datum.Gyroy),
+			fmt.Sprintf("%0.4f", datum.Gyroz),
+			fmt.Sprintf("%0.4f", datum.Compx),
+			fmt.Sprintf("%0.4f", datum.Compy),
+			fmt.Sprintf("%0.4f", datum.Compz),
+			fmt.Sprintf("%0.4f", datum.Accx[len(datum.Accx)-1]),
+			fmt.Sprintf("%0.4f", datum.Accy[len(datum.Accy)-1]),
+			fmt.Sprintf("%0.4f", datum.Accz[len(datum.Accz)-1]),
+		)
 		w.Write(record)
 	}
 	w.Flush()
