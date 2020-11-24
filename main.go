@@ -183,7 +183,7 @@ func main() {
 				Accy:  accy,
 				Accz:  accz,
 			}
-			data = data.Append(d)
+			data = append(data, d)
 		}
 	}
 	if indent {
@@ -280,9 +280,4 @@ func (e Encoded) TransAcc(xyz string) ([]float64, error) {
 		acxl = append(acxl, 16000*float64(int16(a))/32768) // 換算加速度を加速度配列に格納
 	}
 	return acxl, err
-}
-
-// Append :append data slice
-func (d Data) Append(a *Datum) Data {
-	return append(d, a)
 }
