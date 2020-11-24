@@ -1,19 +1,25 @@
 package main
 
 import (
+	"encoding/csv"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"strconv"
 	"time"
+
+	"golang.org/x/text/encoding/japanese"
+	"golang.org/x/text/transform"
 )
 
 const (
 	// VERSION : version
-	VERSION = "0.2.1"
+	VERSION = "0.3.0"
 )
 
 var (
@@ -21,12 +27,10 @@ var (
 	showVersion bool
 	// ヘルプフラグ
 	showHelp bool
+	// 出力ファイル形式
+	dumpFormat string
 	// インデントフラグ
 	indent bool
-	// 最終的にPrintするJSONデータ
-	jdata []byte
-	// エラー
-	err error
 )
 
 // Datum : 1秒当たりのデータ
@@ -59,24 +63,32 @@ func flagUsage() {
 	usageText := `SDカードにためたバイナリデータをテキスト(JSON形式)にして標準出力にdumpします。
 
 Usage:
-単一のファイルをJSON化
-	templogger data/12161037.DAT
-複数のファイルをJSON化
-	templogger data/12161037.DAT data/12161237.DAT
-すべてのDATファイルをJSON化
-	templogger data/*.DAT
--tオプションで読みやすいようにインデントを入れます
-	templogger -t data/*.DAT
+	単一のファイルをCSV化(data/12161037.csvが作成されます)
+	$ templogger data/12161037.DAT
+	複数のファイルをCSV化(data/12161037.csvが作成されます)
+	$ templogger data/12161037.DAT data/12161137.DAT
+	単一のファイルをJSON化
+	$ templogger -f json data/12161037.DAT
+	複数のファイルをJSON化
+	$ templogger --format json data/12161037.DAT data/12161237.DAT
+	すべてのDATファイルをJSON化
+	$ templogger --format json data/*.DAT
+	-tオプションで読みやすいようにインデントを入れます
+	$ templogger --format json -t data/*.DAT
 
--h, -help		show help message
--t, -indent		indent to format output
--v, -version	show version
+Options:
+	-f, -format		dump format "csv" or "json" (default "csv")
+	-h, -help		show help message
+	-t, -indent		indent to format output (must use with "--format json")
+	-v, -version		show version
 `
 	fmt.Fprintf(os.Stderr, "%s\n\n", usageText)
 }
 
 func main() {
 	flag.Usage = flagUsage
+	flag.StringVar(&dumpFormat, "f", "csv", "dump format csv or json")
+	flag.StringVar(&dumpFormat, "format", "csv", "dump format csv or json")
 	flag.BoolVar(&showVersion, "v", false, "show version")
 	flag.BoolVar(&showVersion, "version", false, "show version")
 	flag.BoolVar(&indent, "t", false, "indent to format output")
@@ -89,6 +101,7 @@ func main() {
 		return // versionを表示して終了
 	}
 
+	// File walk thru & Change format binary to text
 	for _, file := range flag.Args() {
 		var e Encoded
 		fp, err := os.Open(file)
@@ -167,7 +180,7 @@ func main() {
 			if err != nil {
 				log.Fatalln(err)
 			}
-			/* 出力 */
+			// Compile data
 			d := &Datum{
 				Time:  tm,
 				Temp:  tmp,
@@ -184,17 +197,32 @@ func main() {
 				Accz:  accz,
 			}
 			data = data.Append(d)
+			/* 行ごとではなく一度にdumpする理由
+			JSON Array形式で出力するので、
+			Arrayの接続の,とか終わりの]とか出力するのが難しいので、
+			goのオブジェクト上でSliceにしてそれをJson Marshalかけるのが楽。
+			いずれにせよcsv出力するときはappendしてSliceオブジェクトにするので、
+			1行ずつ出力することにパフォーマンスの改善もない。
+			*/
 		}
 	}
-	if indent {
-		jdata, err = json.MarshalIndent(data, "", "\t")
-	} else {
-		jdata, err = json.Marshal(data)
+
+	// Output
+	switch dumpFormat {
+	case "csv": // dump to a file
+		if err := data.ToCSV(); err != nil {
+			log.Fatalf("%s", err)
+		}
+	case "json": // dump to stdout
+		out, err := data.ToJSON(indent)
+		if err != nil {
+			log.Fatalf("%s", err)
+		}
+		fmt.Printf("%v\n", string(out))
+	default:
+		err := errors.New("error unknown file type")
+		log.Fatalf("%s", err)
 	}
-	if err != nil {
-		fmt.Println(err)
-	}
-	fmt.Printf("%v\n", string(jdata))
 }
 
 // TransTime : 一秒分324文字列から日付・時間の変換
@@ -282,7 +310,64 @@ func (e Encoded) TransAcc(xyz string) ([]float64, error) {
 	return acxl, err
 }
 
+// TrimExtension : trim file extensiton
+func TrimExtension(filename string) string {
+	return filename[:len(filename)-len(filepath.Ext(filename))]
+}
+
 // Append :append data slice
 func (d Data) Append(a *Datum) Data {
 	return append(d, a)
+}
+
+// ToJSON : convert data slice as JSON format
+func (d Data) ToJSON(indent bool) (b []byte, err error) {
+	if indent {
+		return json.MarshalIndent(d, "", "\t")
+	}
+	return json.Marshal(d)
+}
+
+// ToCSV : convert data slice as CSV format
+// create a csv file
+// file name is a first argument of dat file
+func (d Data) ToCSV() error {
+	filename := TrimExtension(flag.Args()[0]) + ".csv"
+	f, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	// w := csv.NewWriter(f) // as UTF-8
+	// Create japanese sjis csv file
+	w := csv.NewWriter(transform.NewWriter(f, japanese.ShiftJIS.NewEncoder())) // as SJIS
+
+	layout := "2006-01-02 15:04:05" // time format
+	// csv header
+	w.Write([]string{
+		"時間", "温度", "湿度",
+		"ジャイロX", "ジャイロY", "ジャイロZ",
+		"コンパスX", "コンパスY", "コンパスZ",
+		"加速度X", "加速度Y", "加速度Z",
+	})
+	for _, datum := range d { // csv items
+		var record []string
+		record = append(record,
+			datum.Time.Format(layout),
+			fmt.Sprintf("%0.4f", datum.Temp),
+			fmt.Sprintf("%0.4f", datum.Hum),
+			fmt.Sprintf("%0.4f", datum.Gyrox),
+			fmt.Sprintf("%0.4f", datum.Gyroy),
+			fmt.Sprintf("%0.4f", datum.Gyroz),
+			fmt.Sprintf("%0.4f", datum.Compx),
+			fmt.Sprintf("%0.4f", datum.Compy),
+			fmt.Sprintf("%0.4f", datum.Compz),
+			fmt.Sprintf("%0.4f", datum.Accx[len(datum.Accx)-1]),
+			fmt.Sprintf("%0.4f", datum.Accy[len(datum.Accy)-1]),
+			fmt.Sprintf("%0.4f", datum.Accz[len(datum.Accz)-1]),
+		)
+		w.Write(record)
+	}
+	w.Flush()
+	return err
 }
