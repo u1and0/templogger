@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -21,12 +22,10 @@ var (
 	showVersion bool
 	// ヘルプフラグ
 	showHelp bool
+	// 出力ファイル形式
+	dumpFormat string
 	// インデントフラグ
 	indent bool
-	// 最終的にPrintするJSONデータ
-	jdata []byte
-	// エラー
-	err error
 )
 
 // Datum : 1秒当たりのデータ
@@ -60,23 +59,26 @@ func flagUsage() {
 
 Usage:
 単一のファイルをJSON化
-	templogger data/12161037.DAT
+	templogger -f json data/12161037.DAT
 複数のファイルをJSON化
-	templogger data/12161037.DAT data/12161237.DAT
+	templogger --format json data/12161037.DAT data/12161237.DAT
 すべてのDATファイルをJSON化
-	templogger data/*.DAT
+	templogger --format json data/*.DAT
 -tオプションで読みやすいようにインデントを入れます
-	templogger -t data/*.DAT
+	templogger --format json -t data/*.DAT
 
+-f, -format		dump format "csv" or "json"
 -h, -help		show help message
--t, -indent		indent to format output
--v, -version	show version
+-t, -indent		indent to format output (must use with "--format json")
+-v, -version		show version
 `
 	fmt.Fprintf(os.Stderr, "%s\n\n", usageText)
 }
 
 func main() {
 	flag.Usage = flagUsage
+	flag.StringVar(&dumpFormat, "f", "csv", "dump format csv or json")
+	flag.StringVar(&dumpFormat, "format", "csv", "dump format csv or json")
 	flag.BoolVar(&showVersion, "v", false, "show version")
 	flag.BoolVar(&showVersion, "version", false, "show version")
 	flag.BoolVar(&indent, "t", false, "indent to format output")
@@ -89,6 +91,7 @@ func main() {
 		return // versionを表示して終了
 	}
 
+	// File walk thru & Change format binary to text
 	for _, file := range flag.Args() {
 		var e Encoded
 		fp, err := os.Open(file)
@@ -186,15 +189,21 @@ func main() {
 			data = data.Append(d)
 		}
 	}
-	if indent {
-		jdata, err = json.MarshalIndent(data, "", "\t")
-	} else {
-		jdata, err = json.Marshal(data)
+
+	// Output
+	switch dumpFormat {
+	case "csv":
+		fmt.Println("hoge")
+	case "json":
+		out, err := data.ToJSON(indent)
+		if err != nil {
+			log.Fatalf("%s", err)
+		}
+		fmt.Printf("%v\n", string(out))
+	default:
+		err := errors.New("error unknown file type")
+		log.Fatalf("%s", err)
 	}
-	if err != nil {
-		fmt.Println(err)
-	}
-	fmt.Printf("%v\n", string(jdata))
 }
 
 // TransTime : 一秒分324文字列から日付・時間の変換
@@ -285,4 +294,12 @@ func (e Encoded) TransAcc(xyz string) ([]float64, error) {
 // Append :append data slice
 func (d Data) Append(a *Datum) Data {
 	return append(d, a)
+}
+
+// ToJSON : convert data slice as JSON format
+func (d Data) ToJSON(indent bool) (b []byte, err error) {
+	if indent {
+		return json.MarshalIndent(d, "", "\t")
+	}
+	return json.Marshal(d)
 }
