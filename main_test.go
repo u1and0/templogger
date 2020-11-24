@@ -79,3 +79,19 @@ func TestTransGyro(t *testing.T) {
 		t.Fatalf("got: %v want: %v", actual, expected)
 	}
 }
+
+func TestAppend(t *testing.T) {
+	a1 := &Datum{Temp: 10}
+	a2 := &Datum{Temp: 20}
+	d := Data{a1}
+	actual := d.Append(a2)
+	expected := []Datum{Datum{
+		Temp: 10},
+		Datum{Temp: 20},
+	}
+	for i, e := range expected {
+		if actual[i].Temp != e.Temp {
+			t.Fatalf("got: %v want: %v", actual[i].Temp, e.Temp)
+		}
+	}
+}
