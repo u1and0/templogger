@@ -12,6 +12,9 @@ import (
 	"path/filepath"
 	"strconv"
 	"time"
+
+	"golang.org/x/text/encoding/japanese"
+	"golang.org/x/text/transform"
 )
 
 const (
@@ -330,7 +333,8 @@ func (d Data) ToCSV() error {
 		return err
 	}
 	defer f.Close()
-	w := csv.NewWriter(f)
+	// Create japanese sjis csv file
+	w := csv.NewWriter(transform.NewWriter(f, japanese.ShiftJIS.NewEncoder()))
 
 	layout := "2006-01-02 15:04:05"     // time format
 	w.Write([]string{"時間", "温度", "湿度"}) // csv header
