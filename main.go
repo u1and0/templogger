@@ -19,7 +19,7 @@ import (
 
 const (
 	// VERSION : version
-	VERSION = "0.2.1r"
+	VERSION = "0.3.0"
 )
 
 var (
@@ -63,19 +63,24 @@ func flagUsage() {
 	usageText := `SDカードにためたバイナリデータをテキスト(JSON形式)にして標準出力にdumpします。
 
 Usage:
-単一のファイルをJSON化
-	templogger -f json data/12161037.DAT
-複数のファイルをJSON化
-	templogger --format json data/12161037.DAT data/12161237.DAT
-すべてのDATファイルをJSON化
-	templogger --format json data/*.DAT
--tオプションで読みやすいようにインデントを入れます
-	templogger --format json -t data/*.DAT
+	単一のファイルをCSV化(data/12161037.csvが作成されます)
+	$ templogger data/12161037.DAT
+	複数のファイルをCSV化(data/12161037.csvが作成されます)
+	$ templogger data/12161037.DAT data/12161137.DAT
+	単一のファイルをJSON化
+	$ templogger -f json data/12161037.DAT
+	複数のファイルをJSON化
+	$ templogger --format json data/12161037.DAT data/12161237.DAT
+	すべてのDATファイルをJSON化
+	$ templogger --format json data/*.DAT
+	-tオプションで読みやすいようにインデントを入れます
+	$ templogger --format json -t data/*.DAT
 
--f, -format		dump format "csv" or "json"
--h, -help		show help message
--t, -indent		indent to format output (must use with "--format json")
--v, -version		show version
+Options:
+	-f, -format		dump format "csv" or "json" (default "csv")
+	-h, -help		show help message
+	-t, -indent		indent to format output (must use with "--format json")
+	-v, -version		show version
 `
 	fmt.Fprintf(os.Stderr, "%s\n\n", usageText)
 }
