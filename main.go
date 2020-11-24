@@ -202,26 +202,9 @@ func main() {
 	// Output
 	switch dumpFormat {
 	case "csv": // dump to a file
-		// create a csv file
-		// file name is a first argument of dat file
-		filename := TrimExtension(flag.Args()[0]) + ".csv"
-		f, err := os.Create(filename)
-		if err != nil {
-			log.Fatalln(err)
+		if err := data.ToCSV(); err != nil {
+			log.Fatalf("%s", err)
 		}
-		defer f.Close()
-		w := csv.NewWriter(f)
-
-		layout := "2006-01-02 15:04:05"     // time format
-		w.Write([]string{"時間", "温度", "湿度"}) // csv header
-		for _, d := range data {            // csv items
-			var record []string
-			record = append(record, d.Time.Format(layout))
-			record = append(record, fmt.Sprintf("%0.4f", d.Temp))
-			record = append(record, fmt.Sprintf("%0.4f", d.Hum))
-			w.Write(record)
-		}
-		w.Flush()
 	case "json": // dump to stdout
 		out, err := data.ToJSON(indent)
 		if err != nil {
@@ -335,4 +318,29 @@ func (d Data) ToJSON(indent bool) (b []byte, err error) {
 		return json.MarshalIndent(d, "", "\t")
 	}
 	return json.Marshal(d)
+}
+
+// ToCSV : convert data slice as CSV format
+// create a csv file
+// file name is a first argument of dat file
+func (d Data) ToCSV() error {
+	filename := TrimExtension(flag.Args()[0]) + ".csv"
+	f, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	w := csv.NewWriter(f)
+
+	layout := "2006-01-02 15:04:05"     // time format
+	w.Write([]string{"時間", "温度", "湿度"}) // csv header
+	for _, datum := range d {           // csv items
+		var record []string
+		record = append(record, datum.Time.Format(layout))
+		record = append(record, fmt.Sprintf("%0.4f", datum.Temp))
+		record = append(record, fmt.Sprintf("%0.4f", datum.Hum))
+		w.Write(record)
+	}
+	w.Flush()
+	return err
 }
