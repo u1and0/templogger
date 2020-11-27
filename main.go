@@ -18,8 +18,13 @@ import (
 )
 
 const (
-	// VERSION : version
-	VERSION = "0.3.0"
+	// VERSION : version info
+	VERSION = "0.3.1"
+	// SHIFT : 温度補正値
+	// Temp_Logger.ino の#define SHIFT の値に合わせる
+	// 本来は.inoファイルに書くべき！
+	// hexの引き算ができない技術的負債
+	SHIFT = -2.0
 )
 
 var (
@@ -243,7 +248,7 @@ func (e Encoded) TransTime() (time.Time, error) {
 func (e Encoded) TransTemp() (float64, error) {
 	s := e.String
 	t, err := strconv.ParseInt(s[14:16]+s[12:14], 16, 0) // 16->10進数化
-	tmp := -45 + 175*float64(t)/65535
+	tmp := -45 + 175*float64(t)/65535 + SHIFT
 	return tmp, err
 }
 

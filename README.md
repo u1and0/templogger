@@ -1,7 +1,12 @@
-SDカードにためたバイナリデータをテキスト(JSON形式)にして標準出力にdumpします。
+SDカードにためたバイナリデータをテキストにして標準出力にdumpします。
 
 ## 使い方(Windows)
 変換する目的のDATファイルを`templogger.exe`へドラッグ & ドロップしてください。 (複数選択可)
+
+![](./README_files/datfile.png){#id .class width=800}
+
+
+![](./README_files/csvfile.png){#id .class width=800}
 
 ## Usage
 単一のファイルをCSV化(data/12161037.csvが作成されます)
